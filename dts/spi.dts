@@ -3,7 +3,7 @@
 
 
 / {
-	compatible = "brcm,bcm2837";
+	compatible = "brcm,bcm2835";
 
 	fragment@0 {
 		target = <&gpio>;

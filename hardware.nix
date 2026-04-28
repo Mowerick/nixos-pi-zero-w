@@ -7,7 +7,7 @@
     })
   ];
 
-  nixpkgs.hostPlatform = "aarch64-linux";
+  nixpkgs.hostPlatform = "armv6l-linux";
 
   zramSwap = {
     enable = true;
@@ -21,8 +21,8 @@
 
     deviceTree = {
       enable = true;
-      kernelPackage = pkgs.linuxKernel.packages.linux_rpi3.kernel;
-      filter = "*2837*";
+      kernelPackage = pkgs.linuxKernel.packages.linux_rpi1.kernel;
+      filter = "*2835*";
 
       overlays = [
         {
@@ -42,10 +42,9 @@
   };
 
   boot = {
-    kernelPackages = pkgs.linuxPackages_rpi02w;
+    kernelPackages = pkgs.linuxPackages_rpi1;
 
     initrd.availableKernelModules = [
-      "xhci_pci"
       "usbhid"
       "usb_storage"
     ];
