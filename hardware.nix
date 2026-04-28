@@ -4,6 +4,11 @@
   nixpkgs.overlays = [
     (final: super: {
       makeModulesClosure = x: super.makeModulesClosure (x // { allowMissing = true; });
+      # efivar is marked broken on 32-bit platforms (armv6l), but profiles/base.nix
+      # pulls it in unconditionally via sd-image-raspberrypi.nix. Stub it out since
+      # the Pi Zero W has no use for EFI tools.
+      efivar = final.runCommand "efivar-stub" { } "mkdir $out";
+      efibootmgr = final.runCommand "efibootmgr-stub" { } "mkdir $out";
     })
   ];
 
@@ -42,7 +47,7 @@
   };
 
   boot = {
-    kernelPackages = pkgs.linuxPackages_rpi1;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_rpi1;
 
     initrd.availableKernelModules = [
       "usbhid"
@@ -51,6 +56,7 @@
     loader = {
       grub.enable = false;
       generic-extlinux-compatible.enable = true;
+      efi.canTouchEfiVariables = lib.mkForce false;
     };
 
     # Avoids warning: mdadm: Neither MAILADDR nor PROGRAM has been set. This will cause the `mdmon` service to crash.
