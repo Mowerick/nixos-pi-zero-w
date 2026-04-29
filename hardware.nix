@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 {
   # Some packages (ahci fail... this bypasses that) https://discourse.nixos.org/t/does-pkgs-linuxpackages-rpi3-build-all-required-kernel-modules/42509
   nixpkgs.overlays = [
@@ -26,7 +31,8 @@
 
     deviceTree = {
       enable = true;
-      kernelPackage = pkgs.linuxKernel.packages.linux_rpi1.kernel;
+      # Point to the currently configured (and patched!) kernel
+      kernelPackage = config.boot.kernelPackages.kernel;
       filter = "*2835*";
 
       overlays = [
@@ -47,12 +53,37 @@
   };
 
   boot = {
+    # Set the base kernel package directly
     kernelPackages = lib.mkForce pkgs.linuxPackages_rpi1;
+
+    # Use kernelPatches to safely inject our configuration changes
+    kernelPatches = [
+      {
+        name = "disable-rpi5-armv6-incompatible-drivers";
+        patch = null;
+        # Changed from extraStructuredConfig to structuredExtraConfig
+        structuredExtraConfig = with lib.kernel; {
+          # Disable Raspberry Pi 5 specific drivers that break ARMv6 build
+          PWM_RP1 = no;
+          VIDEO_RP1_CFE = no;
+          DRM_RP1_VEC = no;
+
+          # Disable Designware I2C (Not needed for Zero W)
+          I2C_DESIGNWARE_CORE = no;
+          I2C_DESIGNWARE_PLATFORM = no;
+
+          # Ensure we keep the Broadcom drivers we actually need
+          I2C_BCM2835 = yes;
+          PWM_BCM2835 = yes;
+        };
+      }
+    ];
 
     initrd.availableKernelModules = [
       "usbhid"
       "usb_storage"
     ];
+
     loader = {
       grub.enable = false;
       generic-extlinux-compatible.enable = true;
