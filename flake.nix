@@ -11,7 +11,12 @@
   };
 
   outputs =
-    { self, nixpkgs, ... }:
+    {
+      self,
+      nixpkgs,
+      deploy-rs,
+      ...
+    }:
     {
       nixosModules.sd-image = {
         imports = [
