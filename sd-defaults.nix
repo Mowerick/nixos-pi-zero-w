@@ -1,7 +1,7 @@
 { config, ... }:
 {
   sdImage = {
-    image.fileName = "${config.networking.hostName}.img";
+    imageName = "${config.networking.hostName}.img";
     # bzip2 compression takes loads of time with emulation, skip it. Enable this if you're low on space.
     compressImage = false;
 
