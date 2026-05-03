@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 {
   image.fileName = "${config.networking.hostName}.img";
   sdImage = {
