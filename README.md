@@ -54,10 +54,6 @@ Add the following to your **x86_64 workstation's** NixOS configuration, then `su
   # Note: nix.settings.system-features replaces the defaults, so the four
   # standard x86_64 features must be listed here alongside the new one.
   nix.settings.system-features = [
-    "benchmark"
-    "big-parallel"
-    "kvm"
-    "nixos-test"
     "gccarch-armv6kz"
   ];
 }
