@@ -1,6 +1,6 @@
 { config, ... }:
 {
-  image.fileName = "${config.networking.hostName}.img";
+  image.fileName = lib.mkForce "${config.networking.hostName}.img";
   sdImage = {
     # bzip2 compression takes loads of time with emulation, skip it. Enable this if you're low on space.
     compressImage = false;
