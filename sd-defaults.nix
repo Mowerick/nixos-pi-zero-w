@@ -3,9 +3,8 @@
   image.baseName = lib.mkForce config.networking.hostName;
 
   image.fileName = lib.mkForce "${config.networking.hostName}.img";
+
   sdImage = {
-    imageName = lib.mkForce "${config.networking.hostName}.img";
-    imageBaseName = lib.mkForce config.networking.hostName;
     # bzip2 compression takes loads of time with emulation, skip it. Enable this if you're low on space.
     compressImage = false;
 
