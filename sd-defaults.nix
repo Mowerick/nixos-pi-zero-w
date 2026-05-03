@@ -1,4 +1,4 @@
-{ config, ... }:
+{ config, lib, ... }:
 {
   image.fileName = lib.mkForce "${config.networking.hostName}.img";
   sdImage = {
