@@ -6,11 +6,11 @@ This is a **library flake** — it exposes `nixosModules` and `lib.mkDeployNode`
 
 ## What this flake provides
 
-| Output                  | Description                                                                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `nixosModules.sd-image` | SD image builder — imports upstream `sd-image-raspberrypi.nix` plus the `sdImage.extraFirmwareConfig` option and sane defaults   |
-| `nixosModules.hardware` | Hardware config — kernel, device tree overlays, WiFi firmware, boot loader                                                       |
-| `lib.mkDeployNode`      | Helper to build a `deploy-rs` node for the Pi                                                                                    |
+| Output                  | Description                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `nixosModules.sd-image` | SD image builder — imports upstream `sd-image-raspberrypi.nix` plus the `sdImage.extraFirmwareConfig` option and sane defaults |
+| `nixosModules.hardware` | Hardware config — kernel, device tree overlays, WiFi firmware, boot loader                                                     |
+| `lib.mkDeployNode`      | Helper to build a `deploy-rs` node for the Pi                                                                                  |
 
 ### Hardware module details (`hardware.nix`)
 
@@ -27,7 +27,7 @@ This is a **library flake** — it exposes `nixosModules` and `lib.mkDeployNode`
 ### SD image module details (`sd-image.nix` + `sd-defaults.nix`)
 
 - Adds `sdImage.extraFirmwareConfig` option — any attrs you set get appended to `config.txt` at image build time
-- Defaults: `compressImage = false`, output filename `zerow.img`, GPU memory reduced to 16 MB, camera disabled, HDMI 800×600
+- Defaults: `compressImage = false`, output filename `"${config.networking.hostName}.img";`, GPU memory reduced to 16 MB, camera disabled, HDMI 800×600
 
 ## Usage
 
