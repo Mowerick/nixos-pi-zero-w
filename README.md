@@ -31,11 +31,15 @@ This is a **library flake** — it exposes `nixosModules` and `lib.mkDeployNode`
 
 ## Usage
 
+> [!NOTE]
+> `zerow` is used as a **placeholder hostname** throughout the examples below — substitute it with whatever you set in `networking.hostName`. The output SD image filename is automatically derived from the hostname (`sd-defaults.nix` sets `image.fileName = "${config.networking.hostName}.img"`), so a host named `host_hostinger` produces `host_hostinger.img`, etc.
+
 ### Cross-compilation prerequisites (x86_64 hosts)
 
 The Pi Zero W cannot build itself (512 MB RAM). Builds happen on your workstation via QEMU user-mode emulation. Two things must be configured on the **build host** for this to work.
 
-> [!IMPORTANT] > `boot.binfmt.emulatedSystems` alone is not enough. ARMv6 bootstrap derivations now require the `gccarch-armv6kz` system feature to be explicitly advertised. Without it, Nix refuses to build even though emulation is active, with an error like:
+> [!IMPORTANT] 
+> `boot.binfmt.emulatedSystems` alone is not enough. ARMv6 bootstrap derivations now require the `gccarch-armv6kz` system feature to be explicitly advertised. Without it, Nix refuses to build even though emulation is active, with an error like:
 >
 > ```log
 > error: a 'armv6l-linux' with features {gccarch-armv6kz} is required to build
@@ -60,7 +64,7 @@ Add the following to your **x86_64 workstation's** NixOS configuration, then `su
 ```
 
 > [!WARNING]
-> The **first** build or deploy pulls a full ARMv6 bootstrap and kernel under emulation — expect it to take 1–2 hours. Subsequent builds are fast once the store is populated.
+> The **first** build or deploy compiles a full ARMv6 toolchain, kernel, and userland under emulation. Expect **several hours** depending on your build host — roughly 90 minutes on a modern desktop CPU (e.g. Ryzen 7, recent Core i7), 3–6 hours on a typical laptop. The build is interruptible and resumable; subsequent builds are fast once the store is populated and pinned.
 
 > [!NOTE]
 > On Apple Silicon / AArch64 hosts, `boot.binfmt.emulatedSystems` is not needed (ARMv6 runs natively), but you still need to add `gccarch-armv6kz` to `nix.settings.system-features`.
@@ -91,7 +95,7 @@ Add the following to your **x86_64 workstation's** NixOS configuration, then `su
           # nixpkgs.hostPlatform is already set to "armv6l-linux" by the hardware module.
           nixpkgs.buildPlatform = "x86_64-linux"; # change to "aarch64-linux" if on Apple Silicon / ARM host
 
-          networking.hostName = "zerow";
+          networking.hostName = "zerow"; # ← this also determines the SD image filename (zerow.img)
 
           # WiFi — consider networking.wireless.environmentFile + sops to keep PSK out of store
           networking.wireless = {
@@ -140,6 +144,8 @@ This builds a full Linux kernel and takes a while on first run. Subsequent build
 nix build -L .#nixosConfigurations.zerow.config.system.build.sdImage
 ```
 
+The resulting image lands at `result/sd-image/<hostname>.img` — for the example above, `result/sd-image/zerow.img`.
+
 ### Flash to SD card
 
 ```sh
@@ -167,6 +173,53 @@ ssh admin@zerow.local
 
 ```sh
 nix run github:serokell/deploy-rs .#zerow
+```
+
+### Preventing garbage collection of build artifacts
+
+The first ARMv6 build can take **several hours** under QEMU emulation (see the warning in the prerequisites section). By default, the `result` symlinks left behind by `nix build` are not permanent GC roots — the next `nix-collect-garbage` run will sweep all those expensive armv6l store paths away, forcing a full rebuild on the next deploy.
+
+To keep build artifacts safe across garbage collections, register them as **permanent GC roots** under `/nix/var/nix/gcroots/per-user/$USER/` using `--out-link`.
+
+> [!NOTE]
+> The `per-user` directory may not exist yet on a fresh machine. Create it once with sudo, then chown it to your user — after that, no further sudo is needed:
+>
+> ```sh
+> sudo mkdir -p /nix/var/nix/gcroots/per-user/$USER
+> sudo chown $USER /nix/var/nix/gcroots/per-user/$USER
+> ```
+
+#### Pin the SD image
+
+Pin both the `.img` file and all the armv6l packages that went into building it. Useful if you ever need to re-flash a fresh SD card without rebuilding from scratch:
+
+```sh
+nix build .#nixosConfigurations.zerow.config.system.build.sdImage \
+  --out-link /nix/var/nix/gcroots/per-user/$USER/zerow-sdimage
+```
+
+#### Pin the deploy-rs activatable path
+
+This is what `deploy-rs` actually pushes to the Pi. Pinning it keeps the system closure **plus** the armv6l deploy-rs binary and its transitive dependencies (Rust toolchain, gmp, openssl, …) alive across GC runs:
+
+```sh
+nix build .#deploy.nodes.zerow.profiles.system.path \
+  --out-link /nix/var/nix/gcroots/per-user/$USER/zerow-activatable
+```
+
+> [!TIP]
+> The `deploy-rs` activation wrapper is a separate derivation from `config.system.build.toplevel` — pinning the toplevel alone is not enough, since the wrapper drags in its own armv6l-native deploy-rs binary that takes hours to build under emulation. Always pin `deploy.nodes.<host>.profiles.system.path` for the full deploy-rs closure.
+
+#### Updating pins after config changes
+
+Re-run the same `nix build --out-link` command. The symlink is atomically re-pointed to the new store path, and the previously-pinned closure becomes eligible for collection on the next GC run (assuming nothing else still references it).
+
+#### Removing a pin
+
+Just delete the symlink — no sudo needed if you used `per-user/$USER`:
+
+```sh
+rm /nix/var/nix/gcroots/per-user/$USER/zerow-activatable
 ```
 
 ## `lib.mkDeployNode` reference
