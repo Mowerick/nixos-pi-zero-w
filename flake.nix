@@ -28,6 +28,7 @@
 
       nixosModules.hardware = ./hardware.nix;
 
+      # Updated to properly handle armv6l-linux via the overlay
       lib.mkDeployNode =
         {
           nixosConfiguration,
@@ -35,9 +36,18 @@
           user ? "root",
           sshUser ? user,
         }:
+        let
+          # 1. Create a specialized package set with deploy-rs injected
+          deployPkgs = import nixpkgs {
+            system = nixosConfiguration.pkgs.system;
+            overlays = [ deploy-rs.overlay ];
+          };
+        in
         {
           inherit hostname user sshUser;
-          profiles.system.path = deploy-rs.lib.armv6l-linux.activate.nixos nixosConfiguration;
+
+          # 2. Use the dynamically generated library instead of the hardcoded armv6l-linux one
+          profiles.system.path = deployPkgs.deploy-rs.lib.activate.nixos nixosConfiguration;
         };
     };
 }
