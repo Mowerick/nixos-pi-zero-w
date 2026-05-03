@@ -39,7 +39,7 @@
         let
           # 1. Create a specialized package set with deploy-rs injected
           deployPkgs = import nixpkgs {
-            system = nixosConfiguration.pkgs.system;
+            system = nixosConfiguration.pkgs.stdenv.hostPlatform.system;
             overlays = [ deploy-rs.overlay ];
           };
         in
