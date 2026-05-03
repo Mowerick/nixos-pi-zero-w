@@ -31,14 +31,13 @@ This is a **library flake** — it exposes `nixosModules` and `lib.mkDeployNode`
 
 ## Usage
 
-> [!NOTE]
-> `zerow` is used as a **placeholder hostname** throughout the examples below — substitute it with whatever you set in `networking.hostName`. The output SD image filename is automatically derived from the hostname (`sd-defaults.nix` sets `image.fileName = "${config.networking.hostName}.img"`), so a host named `host_hostinger` produces `host_hostinger.img`, etc.
+> [!NOTE] > `zerow` is used as a **placeholder hostname** throughout the examples below — substitute it with whatever you set in `networking.hostName`. The output SD image filename is automatically derived from the hostname (`sd-defaults.nix` sets `image.fileName = "${config.networking.hostName}.img"`), so a host named `host_hostinger` produces `host_hostinger.img`, etc.
 
 ### Cross-compilation prerequisites (x86_64 hosts)
 
 The Pi Zero W cannot build itself (512 MB RAM). Builds happen on your workstation via QEMU user-mode emulation. Two things must be configured on the **build host** for this to work.
 
-> [!IMPORTANT] 
+> [!IMPORTANT]
 > `boot.binfmt.emulatedSystems` alone is not enough. ARMv6 bootstrap derivations now require the `gccarch-armv6kz` system feature to be explicitly advertised. Without it, Nix refuses to build even though emulation is active, with an error like:
 >
 > ```log
@@ -196,6 +195,15 @@ Pin both the `.img` file and all the armv6l packages that went into building it.
 ```sh
 nix build .#nixosConfigurations.zerow.config.system.build.sdImage \
   --out-link /nix/var/nix/gcroots/per-user/$USER/zerow-sdimage
+```
+
+#### Pin the system closure (`toplevel`)
+
+The system closure on its own — without the deploy-rs activation wrapper. Useful if you also use `nixos-rebuild --target-host` or want a separate root that survives even if you stop using deploy-rs:
+
+```sh
+nix build .#nixosConfigurations.zerow.config.system.build.toplevel \
+  --out-link /nix/var/nix/gcroots/per-user/$USER/zerow-system
 ```
 
 #### Pin the deploy-rs activatable path
