@@ -27,13 +27,47 @@ This is a **library flake** — it exposes `nixosModules` and `lib.mkDeployNode`
 ### SD image module details (`sd-image.nix` + `sd-defaults.nix`)
 
 - Adds `sdImage.extraFirmwareConfig` option — any attrs you set get appended to `config.txt` at image build time
-- Defaults: `compressImage = false`, output filename `"${config.networking.hostName}.img";`, GPU memory reduced to 16 MB, camera disabled, HDMI 800×600
+- Defaults: `compressImage = false`, output filename `"${config.networking.hostName}.img"`, GPU memory reduced to 16 MB, camera disabled, HDMI 800×600
 
 ## Usage
 
-### Cross-compilation
+### Cross-compilation prerequisites (x86_64 hosts)
 
-The Pi Zero W cannot build itself (512 MB RAM). You must cross-compile from your workstation by setting `nixpkgs.buildPlatform` to your host architecture. The `hardware` module already sets `nixpkgs.hostPlatform = "armv6l-linux"`.
+The Pi Zero W cannot build itself (512 MB RAM). Builds happen on your workstation via QEMU user-mode emulation. Two things must be configured on the **build host** for this to work.
+
+> [!IMPORTANT] > `boot.binfmt.emulatedSystems` alone is not enough. ARMv6 bootstrap derivations now require the `gccarch-armv6kz` system feature to be explicitly advertised. Without it, Nix refuses to build even though emulation is active, with an error like:
+>
+> ```log
+> error: a 'armv6l-linux' with features {gccarch-armv6kz} is required to build
+> '...-bootstrap-stage0-glibc-bootstrapFiles.drv', but I am a 'x86_64-linux'
+> with features {benchmark, big-parallel, kvm, nixos-test}
+> ```
+
+Add the following to your **x86_64 workstation's** NixOS configuration, then `sudo nixos-rebuild switch`:
+
+```nix
+{
+  # Enable QEMU binfmt wrapper so the Nix daemon can execute ARMv6 binaries
+  boot.binfmt.emulatedSystems = [ "armv6l-linux" ];
+
+  # Advertise the ARMv6KZ gcc-arch feature that armv6 bootstrap derivations require.
+  # Note: nix.settings.system-features replaces the defaults, so the four
+  # standard x86_64 features must be listed here alongside the new one.
+  nix.settings.system-features = [
+    "benchmark"
+    "big-parallel"
+    "kvm"
+    "nixos-test"
+    "gccarch-armv6kz"
+  ];
+}
+```
+
+> [!WARNING]
+> The **first** build or deploy pulls a full ARMv6 bootstrap and kernel under emulation — expect it to take 1–2 hours. Subsequent builds are fast once the store is populated.
+
+> [!NOTE]
+> On Apple Silicon / AArch64 hosts, `boot.binfmt.emulatedSystems` is not needed (ARMv6 runs natively), but you still need to add `gccarch-armv6kz` to `nix.settings.system-features`.
 
 ### Adding to your flake
 
@@ -57,8 +91,8 @@ The Pi Zero W cannot build itself (512 MB RAM). You must cross-compile from your
         nixos-pi-zero-w.nixosModules.sd-image
         nixos-pi-zero-w.nixosModules.hardware
         {
-          # Cross-compile from your workstation to ARMv6
-          # nixpkgs.hostPlatform is already set to "armv6l-linux" by the hardware module
+          # Cross-compile from your workstation to ARMv6.
+          # nixpkgs.hostPlatform is already set to "armv6l-linux" by the hardware module.
           nixpkgs.buildPlatform = "x86_64-linux"; # change to "aarch64-linux" if on Apple Silicon / ARM host
 
           networking.hostName = "zerow";
@@ -127,18 +161,16 @@ sudo dd if=result/sd-image/zerow.img of=$DEVICE bs=1M conv=fsync status=progress
 ip addr show wlan0
 ```
 
-1. Verify SSH access:
+3. Verify SSH access:
 
 ```sh
 ssh admin@zerow.local
 ```
 
-1. Deploy subsequent updates from your workstation (no rebuilding on the Pi):
+4. Deploy subsequent updates from your workstation (no rebuilding on the Pi):
 
 ```sh
-ZEROW_IP=<the-pi-ip>
-SSH_USER=<the-admin-user-on-the-pi>
-nix run github:serokell/deploy-rs .#zerow -- --ssh-user $SSH_USER --hostname $ZEROW_IP
+nix run github:serokell/deploy-rs .#zerow
 ```
 
 ## `lib.mkDeployNode` reference
@@ -160,5 +192,4 @@ nixos-pi-zero-w.lib.mkDeployNode {
 
 ## See also
 
-- [NixOS issue #216886](https://github.com/NixOS/nixpkgs/issues/216886)
 - [Reference gist](https://gist.github.com/plmercereau/0c8e6ed376dc77617a7231af319e3d29)
