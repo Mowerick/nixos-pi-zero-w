@@ -37,16 +37,14 @@
           sshUser ? user,
         }:
         let
-          # 1. Create a specialized package set with deploy-rs injected
-          deployPkgs = import nixpkgs {
-            system = nixosConfiguration.pkgs.stdenv.hostPlatform.system;
-            overlays = [ deploy-rs.overlay ];
-          };
+          # Reuse the already-evaluated package set from the nixosConfiguration,
+          # extended with the deploy-rs overlay. This guarantees we use the same
+          # nixpkgs revision (and overlays/config) as the system closure, so all
+          # store paths align and nothing rebuilds.
+          deployPkgs = nixosConfiguration.pkgs.extend deploy-rs.overlays.default;
         in
         {
           inherit hostname user sshUser;
-
-          # 2. Use the dynamically generated library instead of the hardcoded armv6l-linux one
           profiles.system.path = deployPkgs.deploy-rs.lib.activate.nixos nixosConfiguration;
         };
     };
