@@ -31,7 +31,8 @@ This is a **library flake** — it exposes `nixosModules` and `lib.mkDeployNode`
 
 ## Usage
 
-> [!NOTE] > `zerow` is used as a **placeholder hostname** throughout the examples below — substitute it with whatever you set in `networking.hostName`. The output SD image filename is automatically derived from the hostname (`sd-defaults.nix` sets `image.fileName = "${config.networking.hostName}.img"`), so a host named `host_hostinger` produces `host_hostinger.img`, etc.
+> [!NOTE]
+>  `zerow` is used as a **placeholder hostname** throughout the examples below — substitute it with whatever you set in `networking.hostName`. The output SD image filename is automatically derived from the hostname (`sd-defaults.nix` sets `image.fileName = "${config.networking.hostName}.img"`), so a host named `host_hostinger` produces `host_hostinger.img`, etc.
 
 ### Cross-compilation prerequisites (x86_64 hosts)
 
